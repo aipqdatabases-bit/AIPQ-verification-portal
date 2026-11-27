@@ -210,14 +210,6 @@ export function VerificationPortal() {
 
   return (
     <div id="top">
-      <div className="ribbon">
-        <div className="wrap">
-          <span className="rhs">
-            <Icon name="lock" size={12} /> Demo · Sample records
-          </span>
-        </div>
-      </div>
-
       <header ref={headerRef} className="header">
         <div className="wrap">
           <a

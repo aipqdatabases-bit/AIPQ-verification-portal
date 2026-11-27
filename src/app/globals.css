@@ -113,30 +113,6 @@ svg {
   display: block;
 }
 
-/* ---------- Top utility bar ---------- */
-.ribbon {
-  background: var(--navy-950);
-  color: #c6d2e8;
-  font-size: 0.78rem;
-  font-family: var(--label);
-  letter-spacing: 0.02em;
-  border-top: 3px solid var(--gold-500);
-}
-.ribbon .wrap {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 34px;
-  padding-block: 6px;
-}
-.ribbon .rhs {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #9fb0cc;
-}
-
 /* ---------- Header ---------- */
 .header {
   position: sticky;
@@ -1337,10 +1313,6 @@ section.block {
   body {
     font-size: 16px;
   }
-  .ribbon .wrap {
-    min-height: 26px;
-    padding-block: 3px;
-  }
   .header {
     background: var(--white);
     backdrop-filter: none;
@@ -1659,7 +1631,6 @@ section.block {
 
 /* ---------- Print ---------- */
 @media print {
-  .ribbon,
   .header,
   .footer,
   .sideactions,
