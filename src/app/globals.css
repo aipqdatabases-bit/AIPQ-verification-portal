@@ -467,34 +467,9 @@ svg {
 .btn--block {
   width: 100%;
 }
-.samples {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-.samples .lbl {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-right: 2px;
-}
-.chip {
-  border: 1px dashed var(--line-2);
-  background: var(--tile);
-  border-radius: 999px;
-  padding: 6px 13px;
-  font-family: var(--label);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--navy-700);
-  cursor: pointer;
-  transition: 0.14s;
-}
-.chip:hover {
-  border-style: solid;
-  border-color: var(--gold-500);
-  color: var(--gold-700);
+.formrow .btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 .form-note {
   margin-top: 16px;
@@ -1155,7 +1130,6 @@ section.block {
   scroll-margin-top: 112px;
 }
 .tab,
-.chip,
 .formrow .btn {
   line-height: normal;
 }
@@ -1412,19 +1386,6 @@ section.block {
     padding-inline: 12px;
     font-size: 1rem;
   }
-  .samples {
-    gap: 6px;
-    margin-top: 12px;
-  }
-  .samples .lbl {
-    flex-basis: 100%;
-  }
-  .chip {
-    min-height: 44px;
-    max-width: 100%;
-    padding-inline: 10px;
-    overflow-wrap: anywhere;
-  }
   .form-note {
     margin-top: 12px;
     line-height: 1.45;
@@ -1637,7 +1598,6 @@ section.block {
   .result-actions,
   .hero,
   .form-note,
-  .samples,
   .menu-btn,
   #view-home {
     display: none !important;
