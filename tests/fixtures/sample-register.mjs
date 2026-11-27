@@ -1,6 +1,4 @@
-import type { Certificate, Centre, Member } from "./verification";
-
-export const certificates: Record<string, Certificate> = {
+export const certificates = {
   "AIPQ-BUS-2024-000481": {
     status: "valid",
     progName: "Diploma in Business Administration",
@@ -154,7 +152,7 @@ export const certificates: Record<string, Certificate> = {
   },
 };
 
-export const centres: Record<string, Centre> = {
+export const centres = {
   "AIPQ-CTR-US-0043": {
     status: "approved",
     name: "Atlantic Professional College",
@@ -199,7 +197,7 @@ export const centres: Record<string, Centre> = {
   },
 };
 
-export const members: Record<string, Member> = {
+export const members = {
   "AIPQ-M-004812": {
     status: "active",
     name: "Eleanor J. Whitfield",

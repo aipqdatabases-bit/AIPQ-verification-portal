@@ -22,12 +22,12 @@ const steps = [
     "Type the certificate reference, centre ID or membership number as printed. You can also look up a learning centre by name.",
   ],
   [
-    "Check the sample register",
-    "Your request is matched against the demo records. A correctly formatted number needs a matching record to return award details.",
+    "Check the register",
+    "The portal searches the AIPQ register for a matching record.",
   ],
   [
     "See the current status",
-    "Results include the sample record’s status, a verification reference and a timestamp. You can print or save the result for your records.",
+    "Results include the record’s status, a verification reference and a timestamp. You can print or save the result for your records.",
   ],
 ];
 
@@ -70,11 +70,11 @@ const states: {
 const questions = [
   [
     "What does a verification result show?",
-    "A certificate result shows its status, qualification, level, credits, issue date, and transcript of subjects and grades. The sample transcript displays a masked identity document number.",
+    "A certificate result shows its status, qualification, level, credits, issue date, and transcript of subjects and grades. The transcript displays a masked identity document number.",
   ],
   [
     "Is a certificate with a valid-looking number automatically genuine?",
-    "A certificate’s authenticity depends on a matching entry in AIPQ’s official register. This demo checks a set of sample records.",
+    "A certificate’s authenticity depends on a matching entry in AIPQ’s register.",
   ],
   [
     "What does the QR code on a certificate do?",
@@ -108,8 +108,7 @@ export function PortalInformation() {
             <span className="kicker">How verification works</span>
             <h2>One register. One honest answer.</h2>
             <p>
-              Try a sample to see how the portal displays the status of a
-              certificate, learning centre or membership.
+              Check the status of a certificate, learning centre or membership.
             </p>
           </div>
           <ol className="steps">
@@ -251,9 +250,9 @@ export function PortalFooter({ navigate }: { navigate: Navigate }) {
           <div className="max-[981px]:col-span-full">
             <BrandLogo onDark />
             <p className="about">
-              This preview shows how credential holders, employers and
-              institutions can check AIPQ certificates, transcripts, learning
-              centre approvals and memberships using sample records.
+              Credential holders, employers and institutions can check AIPQ
+              certificates, transcripts, learning centre approvals and
+              memberships.
             </p>
           </div>
           <div>
@@ -334,23 +333,21 @@ export function PortalFooter({ navigate }: { navigate: Navigate }) {
                 </a>
               </li>
               <FooterNotice title="Privacy notice">
-                This demo compares each lookup with sample records in your
-                browser. Use the example references for testing. Contact AIPQ
-                with privacy questions about its verification service.
+                The portal uses your search entry to find the matching record
+                in the AIPQ register. The transcript displays a masked identity
+                document number. Contact AIPQ with privacy questions.
               </FooterNotice>
               <FooterNotice title="Terms of use">
-                Use this preview to explore the sample records. Contact AIPQ for
-                official confirmation of a credential’s authenticity or status.
-                The relevant employer, institution or authority decides whether
-                to recognise a credential.
+                Use this portal to check the status of an AIPQ record. The
+                relevant employer, institution or authority decides whether to
+                recognise a credential.
               </FooterNotice>
             </ul>
           </div>
         </div>
         <p className="footer__gov">
-          <strong>Governance notice.</strong> Results in this preview come from
-          sample records. Official verification confirms a credential’s
-          authenticity and status in AIPQ’s records at the time of the search.
+          <strong>Governance notice.</strong> Results reflect the status
+          recorded in the AIPQ register at the time of the search.
           Decisions about recognition, accreditation or equivalency rest with
           the relevant employer, institution or authority.
         </p>

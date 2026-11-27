@@ -9,7 +9,7 @@ import {
 const statusText = {
   valid: [
     "Valid certificate",
-    "This sample certificate is in good standing.",
+    "This certificate is in good standing.",
     "ok",
     "check",
   ],
@@ -21,49 +21,49 @@ const statusText = {
   ],
   revoked: [
     "Revoked certificate",
-    "AIPQ withdrew this sample certificate.",
+    "AIPQ withdrew this certificate.",
     "bad",
     "cross",
   ],
   approved: [
     "Approved learning centre",
-    "The sample register lists this centre as an approved AIPQ delivery partner.",
+    "AIPQ lists this centre as an approved delivery partner.",
     "ok",
     "check",
   ],
   suspended: [
     "Approval suspended",
-    "This centre’s approval is suspended in the sample register.",
+    "AIPQ has suspended this centre’s approval.",
     "warn",
     "warning",
   ],
   active: [
     "Active membership",
-    "The sample register lists this member as active.",
+    "AIPQ lists this member as active.",
     "ok",
     "check",
   ],
   inactive: [
     "Membership inactive",
-    "This membership is inactive in the sample register.",
+    "AIPQ lists this membership as inactive.",
     "warn",
     "warning",
   ],
   missingCert: [
     "No matching record found",
-    "No sample certificate matches the reference you entered.",
+    "No certificate matches the reference you entered.",
     "bad",
     "search",
   ],
   missingCentre: [
     "No matching centre found",
-    "No sample centre matches the details you entered.",
+    "No centre matches the details you entered.",
     "bad",
     "search",
   ],
   missingMember: [
     "No matching membership found",
-    "No sample membership matches the details you entered.",
+    "No membership matches the details you entered.",
     "bad",
     "search",
   ],
@@ -142,7 +142,7 @@ function Transcript({ record }: { record: Certificate }) {
   ];
 
   return (
-    <Card icon="document" title="Verified transcript" tag="Sample record">
+    <Card icon="document" title="Verified transcript">
       <div className="mb-[18px]">
         <RecordFields fields={fields} />
       </div>
@@ -325,7 +325,7 @@ export function PortalResult({
     hour: "2-digit",
     minute: "2-digit",
     timeZoneName: "short",
-  }).format(result.checkedAt);
+  }).format(new Date(result.checkedAt));
 
   function printResult() {
     window.print();
@@ -361,7 +361,7 @@ export function PortalResult({
               <p>{message}</p>
             </div>
             <div className="meta">
-              <div className="vref">Demo verification reference</div>
+              <div className="vref">Verification reference</div>
               <div className="vval">{result.reference}</div>
               <div className="vtime">Checked {timestamp}</div>
             </div>
@@ -381,7 +381,7 @@ export function PortalResult({
             <Card
               icon={card.icon}
               title={card.title}
-              tag={result.record ? "Sample register" : "No match"}
+              tag={result.record ? undefined : "No match"}
             >
               <RecordFields fields={fields} />
             </Card>
@@ -413,8 +413,7 @@ export function PortalResult({
             <div className="govbox">
               <span className="kicker">Scope of this result</span>
               <p>
-                This result uses sample data. Contact AIPQ to confirm a
-                credential’s real status.
+                This result reflects the AIPQ register at the time of the check.
               </p>
             </div>
           </aside>

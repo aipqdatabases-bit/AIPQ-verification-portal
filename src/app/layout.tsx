@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "AIPQ Verification Portal",
   description:
-    "Preview certificate, transcript, learning centre, and membership verification with sample records.",
+    "Verify AIPQ certificates, transcripts, learning centre approvals, and memberships.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

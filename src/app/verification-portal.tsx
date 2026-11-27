@@ -18,7 +18,9 @@ import {
 import { Icon, type IconName } from "./portal-icon";
 import { PortalResult } from "./portal-result";
 import {
-  verify,
+  verificationQueryLimit,
+  verificationUnavailable,
+  type VerificationResponse,
   type VerificationResult,
   type VerificationType,
 } from "./verification";
@@ -42,7 +44,6 @@ const lookupOptions: Record<
     placeholder: string;
     action: string;
     note: string;
-    samples: [label: string, reference: string][];
   }
 > = {
   cert: {
@@ -54,61 +55,50 @@ const lookupOptions: Record<
     label: "Certificate reference no",
     placeholder: "AIPQ-BUS-2024-000481",
     action: "Verify certificate",
-    note: "The lookup checks for a matching sample record. Try the examples above to see valid, superseded, revoked and missing certificate results.",
-    samples: [
-      ["Valid · AIPQ‑BUS‑2024‑000481", "AIPQ-BUS-2024-000481"],
-      ["Superseded", "AIPQ-HC-2023-000127"],
-      ["Revoked", "AIPQ-IT-2022-000098"],
-      ["Not found", "AIPQ-BUS-2019-000003"],
-    ],
+    note: "The transcript displays a masked identity document number.",
   },
   centre: {
     tab: "Learning Centre",
     icon: "building",
     title: "Verify a learning centre",
     description:
-      "Search for a learning centre to see its approval status and scope in the sample register.",
+      "Find a learning centre’s approval status and scope of delivery.",
     label: "Centre approval ID or name",
     placeholder: "e.g. AIPQ-CTR-US-0043",
     action: "Verify centre",
     note: "An approved centre can deliver the AIPQ qualifications listed in its record. Government endorsement and accreditation are determined separately.",
-    samples: [
-      ["Approved · Boston, MA", "AIPQ-CTR-US-0043"],
-      ["Approved · Los Angeles, CA", "Pacific Institute"],
-      ["Suspended", "AIPQ-CTR-US-0075"],
-    ],
   },
   member: {
     tab: "Membership",
     icon: "member",
     title: "Verify a membership",
-    description: "Look up a sample membership to see its grade and status.",
+    description: "Enter the membership number to see its grade and status.",
     label: "Membership number",
     placeholder: "AIPQ-M-004812",
     action: "Verify membership",
     note: "A membership result shows the grade and standing recorded by AIPQ. Licensing decisions are made by the relevant authorities.",
-    samples: [
-      ["Fellow · Active", "AIPQ-M-004812"],
-      ["Associate · Active", "AIPQ-M-010233"],
-      ["Inactive", "AIPQ-M-002190"],
-    ],
   },
 };
 
 export function VerificationPortal() {
   const [type, setType] = useState<VerificationType>("cert");
   const [values, setValues] = useState({ cert: "", centre: "", member: "" });
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ message: string; invalid?: boolean } | null>(null);
+  const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const focusMenuLink = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const submitRef = useRef<HTMLButtonElement>(null);
+  const activeRequest = useRef<AbortController | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const pendingSection = useRef<string | null>(null);
   const option = lookupOptions[type];
+
+  useEffect(() => {
+    return () => activeRequest.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (result) {
@@ -150,17 +140,26 @@ export function VerificationPortal() {
     };
   }, [menuOpen]);
 
+  function cancelLookup() {
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setChecking(false);
+  }
+
   function selectType(nextType: VerificationType) {
+    if (nextType !== type) cancelLookup();
     setType(nextType);
-    setError("");
+    setError(null);
   }
 
   function updateValue(value: string) {
+    cancelLookup();
     setValues((current) => ({ ...current, [type]: value }));
-    setError("");
+    setError(null);
   }
 
   function navigate(section: string, nextType?: VerificationType) {
+    cancelLookup();
     setMenuOpen(false);
     if (nextType) selectType(nextType);
     if (window.location.hash !== `#${section}`)
@@ -196,16 +195,41 @@ export function VerificationPortal() {
     document.getElementById(`tab-${nextType}`)?.focus();
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const outcome = verify(type, values[type]);
-    if ("error" in outcome) {
-      setError(outcome.error);
-      inputRef.current?.focus();
-      return;
+    if (activeRequest.current) return;
+
+    const request = new AbortController();
+    activeRequest.current = request;
+    setError(null);
+    setChecking(true);
+
+    try {
+      const response = await fetch("/api/verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, query: values[type] }),
+        signal: request.signal,
+      });
+      if (!response.ok && response.status !== 400) throw new Error();
+
+      const outcome: VerificationResponse = await response.json();
+      if (request.signal.aborted) return;
+
+      if ("error" in outcome) {
+        setError({ message: outcome.error, invalid: true });
+        inputRef.current?.focus();
+      } else {
+        setResult(outcome.result);
+      }
+    } catch {
+      if (!request.signal.aborted) setError({ message: verificationUnavailable });
+    } finally {
+      if (activeRequest.current === request) {
+        activeRequest.current = null;
+        setChecking(false);
+      }
     }
-    setError("");
-    setResult(outcome.result);
   }
 
   return (
@@ -297,12 +321,12 @@ export function VerificationPortal() {
                 </h1>
                 <p className="lede">
                   Check the status of an AIPQ certificate, transcript, learning
-                  centre or membership using sample records.
+                  centre or membership in the AIPQ register.
                 </p>
                 <div className="hero__trust">
                   <span>
                     <Icon name="shield" />
-                    Uses sample register records
+                    Checks the AIPQ register
                   </span>
                   <span>
                     <Icon name="clock" />
@@ -378,47 +402,34 @@ export function VerificationPortal() {
                           }
                           enterKeyHint="search"
                           spellCheck={false}
-                          maxLength={120}
-                          aria-invalid={Boolean(error)}
+                          maxLength={verificationQueryLimit}
+                          aria-invalid={error?.invalid}
                           aria-describedby={
                             error ? "verification-error" : undefined
                           }
                         />
                       </div>
                       <button
-                        ref={submitRef}
                         className={`btn btn--block ${type === "cert" ? "btn--gold" : "btn--navy"}`}
                         type="submit"
+                        disabled={checking}
                       >
                         <Icon name="search" />
-                        {option.action}
+                        {checking ? "Checking…" : option.action}
                       </button>
                     </div>
+                    <span className="sr-only" role="status">
+                      {checking ? "Checking the register." : ""}
+                    </span>
                     {error && (
                       <p
                         className="inlineerr show"
                         id="verification-error"
                         role="alert"
                       >
-                        {error}
+                        {error.message}
                       </p>
                     )}
-                    <div className="samples">
-                      <span className="lbl">Try a sample:</span>
-                      {option.samples.map(([label, reference]) => (
-                        <button
-                          className="chip"
-                          type="button"
-                          key={reference}
-                          onClick={() => {
-                            updateValue(reference);
-                            submitRef.current?.focus();
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
                     <div className="form-note">
                       <Icon name="info" />
                       <span>{option.note}</span>
