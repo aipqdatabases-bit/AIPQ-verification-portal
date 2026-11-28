@@ -11,22 +11,29 @@ import { seedRegister } from "./fixtures/seed-register.mjs";
 const run = promisify(execFile);
 const certificateReference = "AIPQ-BUS-2024-000481";
 
-async function verificationEndpoint(server) {
+async function listeningPort(server, portPattern, name) {
   let output = "";
   const exited = once(server, "exit").then(() => {
-    throw new Error("The Next.js test server exited before starting.");
+    throw new Error(`The ${name} test server exited before starting.`);
   });
   const listening = (async () => {
     for await (const chunk of server.stdout.iterator({ destroyOnReturn: false })) {
       output += chunk.toString();
-      const address = output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
-      if (address) return address;
+      const port = output.match(portPattern)?.[1];
+      if (port) return port;
     }
-    throw new Error("The Next.js test server did not report its address.");
+    throw new Error(`The ${name} test server did not report its port.`);
   })();
-  const origin = await Promise.race([listening, exited]);
+  const port = await Promise.race([listening, exited]);
   server.stdout.resume();
-  return `${origin}/api/verification`;
+  return port;
+}
+
+async function stopServer(server) {
+  if (!server || server.exitCode !== null || server.signalCode !== null) return;
+  const closed = once(server, "close");
+  server.kill();
+  await closed;
 }
 
 async function verify(endpoint, type, query, expectedStatus = 200) {
@@ -41,7 +48,7 @@ async function verify(endpoint, type, query, expectedStatus = 200) {
   return response.json();
 }
 
-test("the verification API reads the migrated PostgreSQL register", { timeout: 45_000 }, async (t) => {
+test("the portal uses the separate verification backend and PostgreSQL register", { timeout: 45_000 }, async (t) => {
   assert.ok(process.env.TEST_DATABASE_URL, "Set TEST_DATABASE_URL to a local PostgreSQL server with CREATE DATABASE access.");
   const admin = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
   await admin.connect();
@@ -50,15 +57,13 @@ test("the verification API reads the migrated PostgreSQL register", { timeout: 4
   const testUrl = new URL(process.env.TEST_DATABASE_URL);
   testUrl.pathname = `/${databaseName}`;
   const env = { ...process.env, DATABASE_URL: testUrl.href };
-  let server;
+  let backend;
+  let frontend;
   let databaseCreated = false;
   t.after(async () => {
     try {
-      if (server && server.exitCode === null && server.signalCode === null) {
-        const closed = once(server, "close");
-        server.kill();
-        await closed;
-      }
+      await stopServer(frontend);
+      await stopServer(backend);
       if (databaseCreated) await admin.query(`DROP DATABASE "${databaseName}" WITH (FORCE)`);
     } finally {
       await admin.end();
@@ -70,12 +75,34 @@ test("the verification API reads the migrated PostgreSQL register", { timeout: 4
   const migrate = () => run(process.execPath, ["db/migrate.mjs"], { env, timeout: 20_000 });
   assert.match((await migrate()).stdout, /Applied 001_create_register\.sql/);
 
-  server = spawn(
+  backend = spawn(process.execPath, ["server.mjs"], {
+    env: { ...env, PORT: "0", HOST: "127.0.0.1" },
+    stdio: ["ignore", "pipe", "inherit"],
+    windowsHide: true,
+  });
+  const backendPort = await listeningPort(backend, /listening on port (\d+)\./, "backend");
+  const backendOrigin = `http://127.0.0.1:${backendPort}`;
+  const frontendEnv = { ...process.env, VERIFICATION_BACKEND_URL: backendOrigin };
+  delete frontendEnv.DATABASE_URL;
+  delete frontendEnv.TEST_DATABASE_URL;
+  frontend = spawn(
     process.execPath,
     ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "0"],
-    { env, stdio: ["ignore", "pipe", "inherit"], windowsHide: true },
+    {
+      cwd: new URL("../../", import.meta.url),
+      env: frontendEnv,
+      stdio: ["ignore", "pipe", "inherit"],
+      windowsHide: true,
+    },
   );
-  const endpoint = await verificationEndpoint(server);
+  const frontendPort = await listeningPort(frontend, /http:\/\/127\.0\.0\.1:(\d+)/, "Next.js");
+  const endpoint = `http://127.0.0.1:${frontendPort}/api/verification`;
+
+  await t.test("serves the verification endpoint from the standalone backend", async () => {
+    const { result } = await verify(`${backendOrigin}/api/verification`, "cert", certificateReference);
+    assert.equal(result.id, certificateReference);
+    assert.equal(result.record, undefined);
+  });
 
   await t.test("returns a normal no-match result against the empty database", async () => {
     for (const [type, query] of [
@@ -132,12 +159,19 @@ test("the verification API reads the migrated PostgreSQL register", { timeout: 4
     assert.match((await verify(endpoint, "member", "  ", 400)).error, /Please enter a membership number/);
     assert.match((await verify(endpoint, "invalid", "query", 400)).error, /valid verification type/);
     assert.match((await verify(endpoint, "centre", "a".repeat(121), 400)).error, /valid reference or name/);
+    assert.match((await verify(endpoint, "centre", "a".repeat(5000), 413)).error, /too large/);
 
     await admin.query(`ALTER DATABASE "${databaseName}" ALLOW_CONNECTIONS false`);
     await admin.query(
       "SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity WHERE datname = $1",
       [databaseName],
     );
+    const response = await verify(endpoint, "cert", certificateReference, 503);
+    assert.deepEqual(response, { error: "Verification is temporarily unavailable. Please try again shortly." });
+  });
+
+  await t.test("reports a temporary outage when the backend itself is down", async () => {
+    await stopServer(backend);
     const response = await verify(endpoint, "cert", certificateReference, 503);
     assert.deepEqual(response, { error: "Verification is temporarily unavailable. Please try again shortly." });
   });

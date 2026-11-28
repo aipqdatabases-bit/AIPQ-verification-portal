@@ -1,18 +1,14 @@
-import "server-only";
 import { Pool } from "pg";
-import type { Centre, Certificate, Member, VerificationType } from "../../verification";
 
-const database = globalThis as typeof globalThis & {
-  aipqRegisterPool?: Pool;
-};
+let pool;
 
 function registerPool() {
-  if (database.aipqRegisterPool) return database.aipqRegisterPool;
+  if (pool) return pool;
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is missing.");
 
-  const pool = new Pool({
+  pool = new Pool({
     connectionString,
     max: 5,
     connectionTimeoutMillis: 5_000,
@@ -21,15 +17,18 @@ function registerPool() {
   pool.on("error", () => {
     console.error("An idle verification database connection failed.");
   });
-  database.aipqRegisterPool = pool;
   return pool;
 }
 
-export async function findRecord(type: VerificationType, id: string, value: string) {
+export async function closeRegisterPool() {
+  await pool?.end();
+}
+
+export async function findRecord(type, id, value) {
   const pool = registerPool();
   switch (type) {
     case "cert": {
-      const { rows } = await pool.query<{ record: Certificate }>(
+      const { rows } = await pool.query(
         `SELECT jsonb_strip_nulls(jsonb_build_object(
           'status', certificate.status,
           'progName', certificate.qualification_name,
@@ -65,7 +64,7 @@ export async function findRecord(type: VerificationType, id: string, value: stri
 
     case "centre": {
       const name = value.replace(/\s+/g, " ");
-      const { rows } = await pool.query<{ approval_id: string; record: Centre }>(
+      const { rows } = await pool.query(
         `SELECT approval_id, jsonb_strip_nulls(jsonb_build_object(
           'status', status,
           'name', name,
@@ -86,7 +85,7 @@ export async function findRecord(type: VerificationType, id: string, value: stri
     }
 
     case "member": {
-      const { rows } = await pool.query<{ record: Member }>(
+      const { rows } = await pool.query(
         `SELECT jsonb_strip_nulls(jsonb_build_object(
           'status', status,
           'name', name,

@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import pg from "pg";
+import "../env.mjs";
 
 const migrationsDirectory = new URL("./migrations/", import.meta.url);
 
